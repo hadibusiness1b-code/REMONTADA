@@ -70,34 +70,36 @@ export function DailyLogModal({ isOpen, onClose, logs, onClearLogs }: DailyLogMo
                 </button>
               </div>
 
-              {/* Summary Cards */}
-              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 bg-[#02040a]">
-                <div className="bg-black border border-slate-800 p-4 relative overflow-hidden skew-x-[-5deg]">
-                  <div className="skew-x-[5deg]">
-                    <p className="text-slate-500 font-display font-bold uppercase tracking-widest text-xs">إجمالي اللعب</p>
-                    <p className="text-2xl font-display font-bold italic text-blue-400 mt-1">{formatMoney(totalGameIncome)}</p>
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+                {/* Summary Cards */}
+                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 bg-[#02040a] border-b border-slate-800 mb-2">
+                  <div className="bg-black border border-slate-800 p-4 relative overflow-hidden skew-x-[-5deg]">
+                    <div className="skew-x-[5deg]">
+                      <p className="text-slate-500 font-display font-bold uppercase tracking-widest text-xs">إجمالي اللعب</p>
+                      <p className="text-2xl font-display font-bold italic text-blue-400 mt-1">{formatMoney(totalGameIncome)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-black border border-slate-800 p-4 relative overflow-hidden skew-x-[-5deg]">
+                    <div className="skew-x-[5deg]">
+                      <p className="text-slate-500 font-display font-bold uppercase tracking-widest text-xs">إجمالي الطلبات</p>
+                      <p className="text-2xl font-display font-bold italic text-yellow-500 mt-1">{formatMoney(totalFoodIncome)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-[#0a0505] border border-red-900/50 p-4 relative overflow-hidden skew-x-[-5deg]">
+                    <div className="absolute left-0 top-0 w-1 h-full bg-red-600"></div>
+                    <div className="skew-x-[5deg] ml-2">
+                      <p className="text-red-400/80 font-display font-bold uppercase tracking-widest text-xs">الإجمالي الكلي</p>
+                      <p className="text-3xl font-display font-bold italic text-red-500 mt-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                        {formatMoney(totalIncome)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-black border border-slate-800 p-4 relative overflow-hidden skew-x-[-5deg]">
-                  <div className="skew-x-[5deg]">
-                    <p className="text-slate-500 font-display font-bold uppercase tracking-widest text-xs">إجمالي الطلبات</p>
-                    <p className="text-2xl font-display font-bold italic text-yellow-500 mt-1">{formatMoney(totalFoodIncome)}</p>
-                  </div>
-                </div>
-                <div className="bg-[#0a0505] border border-red-900/50 p-4 relative overflow-hidden skew-x-[-5deg]">
-                  <div className="absolute left-0 top-0 w-1 h-full bg-red-600"></div>
-                  <div className="skew-x-[5deg] ml-2">
-                    <p className="text-red-400/80 font-display font-bold uppercase tracking-widest text-xs">الإجمالي الكلي</p>
-                    <p className="text-3xl font-display font-bold italic text-red-500 mt-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">
-                      {formatMoney(totalIncome)}
-                    </p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Logs List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                {logs.length === 0 ? (
+                {/* Logs List */}
+                <div className="p-4 space-y-4">
+                  {logs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-slate-500">
                     <CalendarClock size={48} className="mb-4 opacity-50" />
                     <p className="font-display font-bold tracking-widest text-lg">لا يوجد حركات مسجلة اليوم</p>
@@ -160,6 +162,7 @@ export function DailyLogModal({ isOpen, onClose, logs, onClearLogs }: DailyLogMo
                     </div>
                   ))
                 )}
+                </div>
               </div>
 
               {/* Footer Actions */}
