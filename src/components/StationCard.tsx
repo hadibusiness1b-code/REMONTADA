@@ -2,20 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Play, Square, RotateCcw, Plus, Utensils, Gamepad2, Receipt, Users, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { PlayerCount, HourlyRates } from '../types';
-
-interface OrderItem {
-  id: string;
-  name: string;
-  price: number;
-}
+import { PlayerCount, HourlyRates, OrderItem, SessionLog } from '../types';
 
 interface StationCardProps {
   stationNumber: number;
   rates: HourlyRates;
+  onSessionComplete: (log: Omit<SessionLog, 'id'>) => void;
 }
 
-export function StationCard({ stationNumber, rates }: StationCardProps) {
+export function StationCard({ stationNumber, rates, onSessionComplete }: StationCardProps) {
   const [status, setStatus] = useState<'available' | 'playing' | 'billing'>('available');
   const [playerCount, setPlayerCount] = useState<PlayerCount | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -50,6 +45,20 @@ export function StationCard({ stationNumber, rates }: StationCardProps) {
   };
 
   const handleReset = () => {
+    if (startTime && playerCount) {
+      onSessionComplete({
+        stationNumber,
+        startTime,
+        endTime: Date.now(),
+        playerCount,
+        elapsedSeconds,
+        gameCost,
+        orders,
+        foodCost,
+        totalCost,
+      });
+    }
+
     setStatus('available');
     setPlayerCount(null);
     setStartTime(null);

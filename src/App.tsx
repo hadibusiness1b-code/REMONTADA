@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { StationCard } from './components/StationCard';
 import { SettingsModal } from './components/SettingsModal';
-import { Gamepad2, Settings } from 'lucide-react';
+import { DailyLogModal } from './components/DailyLogModal';
+import { Gamepad2, Settings, History } from 'lucide-react';
 import { motion } from 'motion/react';
-import { HourlyRates } from './types';
+import { HourlyRates, SessionLog } from './types';
 
 const DEFAULT_RATES: HourlyRates = {
   1: 4000,
@@ -15,12 +16,21 @@ const DEFAULT_RATES: HourlyRates = {
 export default function App() {
   const [rates, setRates] = useState<HourlyRates>(DEFAULT_RATES);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
+  const [dailyLogs, setDailyLogs] = useState<SessionLog[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('remontada_rates');
-    if (saved) {
+    const savedRates = localStorage.getItem('remontada_rates');
+    if (savedRates) {
       try {
-        setRates(JSON.parse(saved));
+        setRates(JSON.parse(savedRates));
+      } catch (e) {}
+    }
+    
+    const savedLogs = localStorage.getItem('remontada_daily_logs');
+    if (savedLogs) {
+      try {
+        setDailyLogs(JSON.parse(savedLogs));
       } catch (e) {}
     }
   }, []);
@@ -29,6 +39,19 @@ export default function App() {
     setRates(newRates);
     localStorage.setItem('remontada_rates', JSON.stringify(newRates));
     setIsSettingsOpen(false);
+  };
+  
+  const handleSessionComplete = (log: Omit<SessionLog, 'id'>) => {
+    const newLog: SessionLog = { ...log, id: Date.now().toString() + Math.random().toString() };
+    const newLogs = [...dailyLogs, newLog];
+    setDailyLogs(newLogs);
+    localStorage.setItem('remontada_daily_logs', JSON.stringify(newLogs));
+  };
+  
+  const handleClearLogs = () => {
+    setDailyLogs([]);
+    localStorage.removeItem('remontada_daily_logs');
+    setIsDailyLogOpen(false);
   };
 
   return (
@@ -62,6 +85,15 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              onClick={() => setIsDailyLogOpen(true)}
+              className="relative overflow-hidden flex items-center justify-center gap-2 h-10 px-4 rounded-none border border-red-900/50 bg-[#0a0a0a] hover:bg-red-950/30 text-red-400 hover:text-red-300 transition-all skew-x-[-10deg]"
+            >
+              <div className="flex items-center gap-2 skew-x-[10deg]">
+                <History size={18} />
+                <span className="font-display font-bold tracking-widest uppercase text-sm">السجل</span>
+              </div>
+            </button>
+            <button
               onClick={() => setIsSettingsOpen(true)}
               className="relative overflow-hidden flex items-center justify-center gap-2 h-10 px-4 rounded-none border border-slate-700 bg-[#0a0a0a] hover:bg-slate-800 text-slate-300 hover:text-white transition-all skew-x-[-10deg]"
             >
@@ -78,10 +110,10 @@ export default function App() {
         </header>
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StationCard stationNumber={1} rates={rates} />
-          <StationCard stationNumber={2} rates={rates} />
-          <StationCard stationNumber={3} rates={rates} />
-          <StationCard stationNumber={4} rates={rates} />
+          <StationCard stationNumber={1} rates={rates} onSessionComplete={handleSessionComplete} />
+          <StationCard stationNumber={2} rates={rates} onSessionComplete={handleSessionComplete} />
+          <StationCard stationNumber={3} rates={rates} onSessionComplete={handleSessionComplete} />
+          <StationCard stationNumber={4} rates={rates} onSessionComplete={handleSessionComplete} />
         </div>
 
         <footer className="mt-16 pt-8 pb-4 border-t border-slate-800/80 text-center opacity-60 hover:opacity-100 transition-opacity duration-300">
@@ -102,6 +134,12 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)} 
         rates={rates} 
         onSave={handleSaveRates} 
+      />
+      <DailyLogModal
+        isOpen={isDailyLogOpen}
+        onClose={() => setIsDailyLogOpen(false)}
+        logs={dailyLogs}
+        onClearLogs={handleClearLogs}
       />
     </div>
   );
