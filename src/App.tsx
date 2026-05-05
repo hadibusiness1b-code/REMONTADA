@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { StationCard } from './components/StationCard';
 import { SettingsModal } from './components/SettingsModal';
 import { DailyLogModal } from './components/DailyLogModal';
-import { Gamepad2, Settings, History } from 'lucide-react';
+import { InventoryModal } from './components/InventoryModal';
+import { OutsideStoreModal } from './components/OutsideStoreModal';
+import { Gamepad2, Settings, History, Package, ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
-import { HourlyRates, SessionLog } from './types';
+import { HourlyRates, SessionLog, InventoryItem } from './types';
 
 const DEFAULT_RATES: HourlyRates = {
   1: 4000,
@@ -17,7 +19,10 @@ export default function App() {
   const [rates, setRates] = useState<HourlyRates>(DEFAULT_RATES);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [dailyLogs, setDailyLogs] = useState<SessionLog[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
     const savedRates = localStorage.getItem('remontada_rates');
@@ -31,6 +36,13 @@ export default function App() {
     if (savedLogs) {
       try {
         setDailyLogs(JSON.parse(savedLogs));
+      } catch (e) {}
+    }
+
+    const savedInventory = localStorage.getItem('remontada_inventory');
+    if (savedInventory) {
+      try {
+        setInventory(JSON.parse(savedInventory));
       } catch (e) {}
     }
   }, []);
@@ -52,6 +64,48 @@ export default function App() {
     setDailyLogs([]);
     localStorage.removeItem('remontada_daily_logs');
     setIsDailyLogOpen(false);
+  };
+
+  const handleAddStock = (id: string, amount: number) => {
+    const newInv = inventory.map(item => item.id === id ? { ...item, stock: item.stock + amount } : item);
+    setInventory(newInv);
+    localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+  };
+
+  const handleAddItem = (item: Omit<InventoryItem, 'id'>) => {
+    const newInv = [...inventory, { ...item, id: Date.now().toString() }];
+    setInventory(newInv);
+    localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+  };
+
+  const handleUpdateItem = (updatedItem: InventoryItem) => {
+    const newInv = inventory.map(item => item.id === updatedItem.id ? updatedItem : item);
+    setInventory(newInv);
+    localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+  };
+
+  const handleRemoveItem = (id: string) => {
+    const newInv = inventory.filter(item => item.id !== id);
+    setInventory(newInv);
+    localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+  };
+
+  // Called when an item is ordered in a station
+  const consumeInventory = (id: string, amount: number = 1) => {
+    setInventory(prev => {
+      const newInv = prev.map(item => item.id === id ? { ...item, stock: Math.max(0, item.stock - amount) } : item);
+      localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+      return newInv;
+    });
+  };
+
+  // Called when an order is cancelled before billing
+  const restoreInventory = (id: string, amount: number = 1) => {
+    setInventory(prev => {
+      const newInv = prev.map(item => item.id === id ? { ...item, stock: item.stock + amount } : item);
+      localStorage.setItem('remontada_inventory', JSON.stringify(newInv));
+      return newInv;
+    });
   };
 
   return (
@@ -85,6 +139,24 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              onClick={() => setIsStoreOpen(true)}
+              className="relative overflow-hidden flex items-center justify-center gap-2 h-10 px-4 rounded-none border border-yellow-900/50 bg-[#0a0a0a] hover:bg-yellow-950/30 text-yellow-500 hover:text-yellow-400 transition-all skew-x-[-10deg]"
+            >
+              <div className="flex items-center gap-2 skew-x-[10deg]">
+                <ShoppingCart size={18} />
+                <span className="font-display font-bold tracking-widest uppercase text-sm">مبيع</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setIsInventoryOpen(true)}
+              className="relative overflow-hidden flex items-center justify-center gap-2 h-10 px-4 rounded-none border border-emerald-900/50 bg-[#0a0a0a] hover:bg-emerald-950/30 text-emerald-400 hover:text-emerald-300 transition-all skew-x-[-10deg]"
+            >
+              <div className="flex items-center gap-2 skew-x-[10deg]">
+                <Package size={18} />
+                <span className="font-display font-bold tracking-widest uppercase text-sm">الجرد</span>
+              </div>
+            </button>
+            <button
               onClick={() => setIsDailyLogOpen(true)}
               className="relative overflow-hidden flex items-center justify-center gap-2 h-10 px-4 rounded-none border border-red-900/50 bg-[#0a0a0a] hover:bg-red-950/30 text-red-400 hover:text-red-300 transition-all skew-x-[-10deg]"
             >
@@ -110,10 +182,10 @@ export default function App() {
         </header>
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StationCard stationNumber={1} rates={rates} onSessionComplete={handleSessionComplete} />
-          <StationCard stationNumber={2} rates={rates} onSessionComplete={handleSessionComplete} />
-          <StationCard stationNumber={3} rates={rates} onSessionComplete={handleSessionComplete} />
-          <StationCard stationNumber={4} rates={rates} onSessionComplete={handleSessionComplete} />
+          <StationCard stationNumber={1} rates={rates} inventory={inventory} onSessionComplete={handleSessionComplete} consumeInventory={consumeInventory} restoreInventory={restoreInventory} />
+          <StationCard stationNumber={2} rates={rates} inventory={inventory} onSessionComplete={handleSessionComplete} consumeInventory={consumeInventory} restoreInventory={restoreInventory} />
+          <StationCard stationNumber={3} rates={rates} inventory={inventory} onSessionComplete={handleSessionComplete} consumeInventory={consumeInventory} restoreInventory={restoreInventory} />
+          <StationCard stationNumber={4} rates={rates} inventory={inventory} onSessionComplete={handleSessionComplete} consumeInventory={consumeInventory} restoreInventory={restoreInventory} />
         </div>
 
         <footer className="mt-16 pt-8 pb-4 border-t border-slate-800/80 text-center opacity-60 hover:opacity-100 transition-opacity duration-300">
@@ -140,6 +212,23 @@ export default function App() {
         onClose={() => setIsDailyLogOpen(false)}
         logs={dailyLogs}
         onClearLogs={handleClearLogs}
+      />
+      <InventoryModal
+        isOpen={isInventoryOpen}
+        onClose={() => setIsInventoryOpen(false)}
+        inventory={inventory}
+        onAddItem={handleAddItem}
+        onAddStock={handleAddStock}
+        onUpdateItem={handleUpdateItem}
+        onRemoveItem={handleRemoveItem}
+      />
+      <OutsideStoreModal
+        isOpen={isStoreOpen}
+        onClose={() => setIsStoreOpen(false)}
+        inventory={inventory}
+        onConsumeInventory={consumeInventory}
+        onRestoreInventory={restoreInventory}
+        onSessionComplete={handleSessionComplete}
       />
     </div>
   );

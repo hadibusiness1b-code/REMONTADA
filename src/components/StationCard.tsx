@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Play, Square, RotateCcw, Plus, Utensils, Gamepad2, Receipt, Users, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { PlayerCount, HourlyRates, OrderItem, SessionLog } from '../types';
+import { PlayerCount, HourlyRates, OrderItem, SessionLog, InventoryItem } from '../types';
 
 interface StationCardProps {
   stationNumber: number;
   rates: HourlyRates;
+  inventory: InventoryItem[];
   onSessionComplete: (log: Omit<SessionLog, 'id'>) => void;
+  consumeInventory: (id: string, amount?: number) => void;
+  restoreInventory: (id: string, amount?: number) => void;
 }
 
-export function StationCard({ stationNumber, rates, onSessionComplete }: StationCardProps) {
+export function StationCard({ stationNumber, rates, inventory, onSessionComplete, consumeInventory, restoreInventory }: StationCardProps) {
   const [status, setStatus] = useState<'available' | 'playing' | 'billing'>('available');
   const [playerCount, setPlayerCount] = useState<PlayerCount | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -68,17 +71,50 @@ export function StationCard({ stationNumber, rates, onSessionComplete }: Station
     setNewItemPrice('');
   };
 
+  const handleRemoveOrder = (orderToRemove: OrderItem) => {
+    setOrders(orders.filter(o => o.id !== orderToRemove.id));
+    if (orderToRemove.inventoryItemId) {
+      restoreInventory(orderToRemove.inventoryItemId, 1);
+    }
+  };
+
   const handleAddOrder = (e: React.FormEvent) => {
     e.preventDefault();
     const price = parseInt(newItemPrice);
     if (!newItemName.trim() || isNaN(price) || price <= 0) return;
     
+    // Check if it matches an inventory item perfectly by name (optional fallback)
+    const matchingInvItem = inventory.find(i => i.name === newItemName.trim());
+    const inventoryItemId = matchingInvItem ? matchingInvItem.id : undefined;
+
     setOrders((prev) => [
       ...prev,
-      { id: Date.now().toString() + Math.random().toString(), name: newItemName.trim(), price }
+      { id: Date.now().toString() + Math.random().toString(), name: newItemName.trim(), price, inventoryItemId }
     ]);
+    
+    if (inventoryItemId) {
+      consumeInventory(inventoryItemId, 1);
+    }
+
     setNewItemName('');
     setNewItemPrice('');
+  };
+
+  const handleAddInventoryOrder = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const invId = e.target.value;
+    if (!invId) return;
+    
+    const invItem = inventory.find(i => i.id === invId);
+    if (!invItem || invItem.stock <= 0) return;
+
+    setOrders((prev) => [
+      ...prev,
+      { id: Date.now().toString() + Math.random().toString(), inventoryItemId: invItem.id, name: invItem.name, price: invItem.price }
+    ]);
+    consumeInventory(invItem.id, 1);
+    
+    // Reset select
+    e.target.value = "";
   };
 
   const currentRate = playerCount ? rates[playerCount] : 0;
@@ -257,7 +293,7 @@ export function StationCard({ stationNumber, rates, onSessionComplete }: Station
                           <div className="flex items-center gap-3">
                             <span className="font-display font-bold italic text-slate-300 tracking-wider tooltip">{formatMoney(order.price)}</span>
                             <button 
-                              onClick={() => setOrders(orders.filter(o => o.id !== order.id))}
+                              onClick={() => handleRemoveOrder(order)}
                               className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded transition-all opacity-0 group-hover:opacity-100"
                               title="إزالة العنصر"
                             >
@@ -271,29 +307,47 @@ export function StationCard({ stationNumber, rates, onSessionComplete }: Station
                 </div>
 
                 {/* Add Item Form */}
-                <form onSubmit={handleAddOrder} className="flex gap-2 p-3 bg-[#0a0a0a] border-t border-slate-800/80">
-                  <input 
-                    type="text" 
-                    placeholder="اسم العنصر"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    className="flex-1 bg-black border border-slate-800 rounded-none px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all min-w-0"
-                  />
-                  <input 
-                    type="number" 
-                    placeholder="السعر"
-                    value={newItemPrice}
-                    onChange={(e) => setNewItemPrice(e.target.value)}
-                    className="w-24 bg-black border border-slate-800 rounded-none px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all font-mono"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={!newItemName.trim() || !newItemPrice.trim()}
-                    className="bg-red-600 hover:bg-red-500 border border-red-500 disabled:opacity-50 disabled:bg-slate-800 disabled:border-slate-700 text-white px-4 skew-x-[-10deg] rounded-none transition-colors flex items-center justify-center flex-shrink-0"
-                  >
-                    <div className="skew-x-[10deg]"><Plus size={18} strokeWidth={3} /></div>
-                  </button>
-                </form>
+                <div className="flex flex-col border-t border-slate-800/80 bg-[#0a0a0a]">
+                  {inventory.length > 0 && (
+                    <div className="p-2 border-b border-slate-800/50">
+                      <select
+                        onChange={handleAddInventoryOrder}
+                        className="w-full bg-black border border-slate-800 rounded-none px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-red-600 transition-all font-display font-bold uppercase"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>+ إضافة من الجرد...</option>
+                        {inventory.map(item => (
+                          <option key={item.id} value={item.id} disabled={item.stock === 0}>
+                            {item.name} - {formatMoney(item.price)} {item.stock === 0 ? '(نفد)' : `(متاح ${item.stock})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <form onSubmit={handleAddOrder} className="flex gap-2 p-3">
+                    <input 
+                      type="text" 
+                      placeholder="طلب خارجي"
+                      value={newItemName}
+                      onChange={(e) => setNewItemName(e.target.value)}
+                      className="flex-1 bg-black border border-slate-800 rounded-none px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all min-w-0"
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="السعر"
+                      value={newItemPrice}
+                      onChange={(e) => setNewItemPrice(e.target.value)}
+                      className="w-24 bg-black border border-slate-800 rounded-none px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all font-mono"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!newItemName.trim() || !newItemPrice.trim()}
+                      className="bg-red-600 hover:bg-red-500 border border-red-500 disabled:opacity-50 disabled:bg-slate-800 disabled:border-slate-700 text-white px-4 skew-x-[-10deg] rounded-none transition-colors flex items-center justify-center flex-shrink-0"
+                    >
+                      <div className="skew-x-[10deg]"><Plus size={18} strokeWidth={3} /></div>
+                    </button>
+                  </form>
+                </div>
               </div>
 
               {/* Live Cost Summary */}

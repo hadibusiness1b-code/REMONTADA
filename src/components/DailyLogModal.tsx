@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, History, Trash2, CalendarClock } from 'lucide-react';
+import { X, History, Trash2, CalendarClock, ShoppingCart } from 'lucide-react';
 import { SessionLog } from '../types';
 
 interface DailyLogModalProps {
@@ -110,9 +110,16 @@ export function DailyLogModal({ isOpen, onClose, logs, onClearLogs }: DailyLogMo
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         
                         <div className="flex items-start gap-4">
-                          <div className="bg-slate-900 border border-slate-800 px-3 py-2 text-center shrink-0">
-                            <span className="block text-xs font-display font-bold text-slate-500 uppercase">جهاز</span>
-                            <span className="block text-xl font-display font-bold italic text-white">{log.stationNumber}</span>
+                          <div className={`border px-3 py-2 text-center shrink-0 w-20 flex flex-col justify-center ${log.stationNumber === 'outside' ? 'bg-yellow-900/20 border-yellow-700/50' : 'bg-slate-900 border-slate-800'}`}>
+                            <span className={`block text-xs font-display font-bold uppercase ${log.stationNumber === 'outside' ? 'text-yellow-500/80' : 'text-slate-500'}`}>
+                              {log.stationNumber === 'outside' ? 'مبيع' : 'جهاز'}
+                            </span>
+                            {log.stationNumber !== 'outside' && (
+                              <span className="block text-xl font-display font-bold italic text-white">{log.stationNumber}</span>
+                            )}
+                            {log.stationNumber === 'outside' && (
+                              <ShoppingCart className="mx-auto mt-1 text-yellow-500" size={18} />
+                            )}
                           </div>
                           
                           <div>
@@ -120,12 +127,16 @@ export function DailyLogModal({ isOpen, onClose, logs, onClearLogs }: DailyLogMo
                               <span className="text-sm font-display font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-none">
                                 {formatTime(log.endTime)}
                               </span>
-                              <span className="text-sm font-display font-bold text-blue-400/80">
-                                {formatDuration(log.elapsedSeconds)}
-                              </span>
-                              <span className="text-sm font-display font-bold text-slate-500">
-                                ({log.playerCount} لاعبين)
-                              </span>
+                              {log.stationNumber !== 'outside' && log.elapsedSeconds !== undefined && (
+                                <span className="text-sm font-display font-bold text-blue-400/80">
+                                  {formatDuration(log.elapsedSeconds)}
+                                </span>
+                              )}
+                              {log.stationNumber !== 'outside' && log.playerCount && (
+                                <span className="text-sm font-display font-bold text-slate-500">
+                                  ({log.playerCount} لاعبين)
+                                </span>
+                              )}
                             </div>
                             
                             {log.orders.length > 0 && (
